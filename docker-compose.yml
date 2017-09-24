@@ -5,8 +5,26 @@ services:
     build: .
     links:
       - database
+    environment:
+      - APP_DB_USER=root
+      - APP_DB_NAME=puzzle_api
+      - APP_DB_HOST=database
+      - APP_DB_PORT=5432
     ports:
       - "8000:8000"
+
+  tests:
+    restart: "no"
+    build: 
+      context: .
+      dockerfile: tests/Dockerfile
+    links:
+      - database
+    environment:
+      - TEST_DB_USER=root
+      - TEST_DB_NAME=puzzle_api
+      - TEST_DB_HOST=database
+      - TEST_DB_PORT=5432
 
   database:
     restart: "no"

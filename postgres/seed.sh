@@ -7,9 +7,9 @@ gosu postgres psql --dbname template1 <<- EOSQL
 EOSQL
 echo "***** Creating puzzle DB *****"
 gosu postgres psql <<- EOSQL
-    CREATE USER evan;
-    ALTER USER evan CREATEDB;
+    CREATE USER root;
+    ALTER USER root CREATEDB;
 
-    CREATE DATABASE puzzle;
-    GRANT ALL PRIVILEGES ON DATABASE puzzle TO evan;
+    CREATE DATABASE puzzle_api;
+    GRANT ALL PRIVILEGES ON DATABASE puzzle_api TO root;
 EOSQL
