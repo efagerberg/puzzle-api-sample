@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -30,7 +31,6 @@ func (a *App) Initialize(user, dbname, host, port string) {
 		"user=%s dbname=%s host=%s port=%s sslmode=disable",
 		user, dbname, host, port,
 	)
-	print(connectionString)
 	var err error
 	a.DB, err = sql.Open("postgres", connectionString)
 	if err != nil {
@@ -53,41 +53,131 @@ func (a *App) SeedDatabase() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	_, err = a.DB.Exec("INSERT INTO puzzles(name, level) VALUES ('Cake', 3)")
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func (a *App) initializeRoutes() {
-	a.Router.HandleFunc("/puzzle", a.GetPuzzles).Methods("GET")
-	a.Router.HandleFunc("/puzzle/{id}", a.GetPuzzle).Methods("GET")
-	a.Router.HandleFunc("/puzzle/{id}", a.CreatePuzzle).Methods("POST")
-	a.Router.HandleFunc("/puzzle/{id}", a.DeletePuzzle).Methods("DELETE")
+	a.Router.HandleFunc("/puzzles", a.getPuzzles).Methods("GET")
+	a.Router.HandleFunc("/puzzle", a.createPuzzle).Methods("POST")
+	a.Router.HandleFunc("/puzzle/{id:[0-9]+}", a.getPuzzle).Methods("GET")
+	a.Router.HandleFunc("/puzzle/{id:[0-9]+}", a.updatePuzzle).Methods("PUT")
+	a.Router.HandleFunc("/puzzle/{id:[0-9]+}", a.deletePuzzle).Methods("DELETE")
 }
 
 // GetPuzzles returns all puzzle objects as a response
-func (a *App) GetPuzzles(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode("Hello World")
+func (a *App) getPuzzles(w http.ResponseWriter, r *http.Request) {
+	count, _ := strconv.Atoi(r.FormValue("count"))
+	start, _ := strconv.Atoi(r.FormValue("start"))
+
+	if count > 10 || count < 1 {
+		count = 10
+	}
+	if start < 0 {
+		start = 0
+	}
+
+	puzzles, err := getPuzzles(a.DB, start, count)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, puzzles)
 }
 
-// GetPuzzle returns a puzzle object as a response
-func (a *App) GetPuzzle(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r)
-	json.NewEncoder(w).Encode("Hello World")
+// getPuzzle returns a puzzle object as a response
+func (a *App) getPuzzle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
+		return
+	}
+
+	p := puzzle{ID: id}
+	if err := p.getPuzzle(a.DB); err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			respondWithError(w, http.StatusNotFound, "Puzzle not found")
+		default:
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, p)
 
 }
 
-// CreatePuzzle creates a puzzle object in our database
-func (a *App) CreatePuzzle(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r)
-	json.NewEncoder(w).Encode("Hello World")
+// createPuzzle creates a puzzle object in our database
+func (a *App) createPuzzle(w http.ResponseWriter, r *http.Request) {
+	var p puzzle
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&p); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
 
+	if err := p.createPuzzle(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, p)
 }
 
-// DeletePuzzle deletes puzzle from database if exists
-func (a *App) DeletePuzzle(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r)
-	json.NewEncoder(w).Encode("Hello World")
+// deletePuzzle deletes puzzle from database if exists
+func (a *App) deletePuzzle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid Puzzle ID")
+		return
+	}
+
+	p := puzzle{ID: id}
+	if err := p.deletePuzzle(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+// updatePuzzle updates a puzzle from database if exists
+func (a *App) updatePuzzle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
+		return
+	}
+
+	var p puzzle
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&p); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+		return
+	}
+	defer r.Body.Close()
+	p.ID = id
+
+	if err := p.updatePuzzle(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, p)
+}
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, map[string]string{"error": message})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	w.Write(response)
 }
