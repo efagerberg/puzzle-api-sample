@@ -2,7 +2,9 @@ version: '2'
 services:
   web:
     restart: "no"
-    build: .
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     links:
       - database
     environment:

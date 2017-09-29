@@ -5,7 +5,7 @@ RUN apk --no-cache add ca-certificates postgresql git
 WORKDIR /gopath/src/github.com/efagerberg/puzzle-api-sample/
 RUN go get github.com/lib/pq \
            github.com/gorilla/mux
-ADD app.go main.go puzzle.go /gopath/src/github.com/efagerberg/puzzle-api-sample/
+COPY web/ /gopath/src/github.com/efagerberg/puzzle-api-sample/
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
 FROM alpine:latest
