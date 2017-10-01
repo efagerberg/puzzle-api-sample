@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"testing"
 
-	"."
+	"github.com/efagerberg/puzzle-api-sample/app"
 )
 
-var a main.App
+var a app.App
 
 const tableCreationQuery = `CREATE table IF NOT EXISTS puzzles
 (
@@ -25,7 +25,7 @@ level int NOT NULL CHECK(level > 0)
 )`
 
 func TestMain(m *testing.M) {
-	a = main.App{}
+	a = app.App{}
 	a.Initialize(
 		os.Getenv("TEST_DB_USER"),
 		os.Getenv("TEST_DB_NAME"),

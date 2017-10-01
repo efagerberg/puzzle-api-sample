@@ -1,0 +1,15 @@
+FROM golang:1.9.0-alpine
+
+ENV GOPATH=/gopath \
+    GOBIN=/gopath/bin \
+    PROJPATH=/gopath/src/github.com/efagerberg/puzzle-api-sample
+
+RUN apk --no-cache add ca-certificates postgresql git openssh
+
+ADD . /gopath/src/github.com/efagerberg/puzzle-api-sample/
+WORKDIR /gopath/src/github.com/efagerberg/puzzle-api-sample/
+
+RUN go get github.com/lib/pq \
+           github.com/gorilla/mux
+ENTRYPOINT ["sh", "postgres/wait-for-postgres.sh", "database"]
+CMD ["go", "test", "-v"]
