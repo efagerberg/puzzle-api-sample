@@ -1,10 +1,8 @@
 version: '2'
 services:
-  web:
+  app:
     restart: "no"
-    build:
-      context: .
-      dockerfile: web/Dockerfile
+    build: .
     links:
       - database
     environment:
@@ -19,7 +17,7 @@ services:
     restart: "no"
     build: 
       context: .
-      dockerfile: tests/Dockerfile
+      dockerfile: Dockerfile.tests
     links:
       - database
     environment:

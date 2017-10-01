@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"database/sql"
@@ -9,6 +9,8 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+
+	// This is a stupid rule
 	_ "github.com/lib/pq"
 )
 
@@ -19,7 +21,7 @@ name text NOT NULL,
 level int NOT NULL CHECK(level > 0)
 )`
 
-// App hp;ds our router and db connection
+// App handles our router and db connection
 type App struct {
 	Router *mux.Router
 	DB     *sql.DB
@@ -63,7 +65,6 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/puzzle/{id:[0-9]+}", a.deletePuzzle).Methods("DELETE")
 }
 
-// GetPuzzles returns all puzzle objects as a response
 func (a *App) getPuzzles(w http.ResponseWriter, r *http.Request) {
 	count, _ := strconv.Atoi(r.FormValue("count"))
 	start, _ := strconv.Atoi(r.FormValue("start"))
@@ -84,7 +85,6 @@ func (a *App) getPuzzles(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, puzzles)
 }
 
-// getPuzzle returns a puzzle object as a response
 func (a *App) getPuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -108,7 +108,6 @@ func (a *App) getPuzzle(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// createPuzzle creates a puzzle object in our database
 func (a *App) createPuzzle(w http.ResponseWriter, r *http.Request) {
 	var p puzzle
 	decoder := json.NewDecoder(r.Body)
@@ -126,7 +125,6 @@ func (a *App) createPuzzle(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, p)
 }
 
-// deletePuzzle deletes puzzle from database if exists
 func (a *App) deletePuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -144,7 +142,6 @@ func (a *App) deletePuzzle(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
-// updatePuzzle updates a puzzle from database if exists
 func (a *App) updatePuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])

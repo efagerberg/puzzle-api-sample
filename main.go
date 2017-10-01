@@ -2,10 +2,12 @@ package main
 
 import (
 	"os"
+
+	"github.com/efagerberg/puzzle-api-sample/app"
 )
 
 func main() {
-	a := App{}
+	a := app.App{}
 	a.Initialize(
 		os.Getenv("APP_DB_USER"),
 		os.Getenv("APP_DB_NAME"),
