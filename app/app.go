@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/efagerberg/puzzle-api-sample/utils"
 	"github.com/gorilla/mux"
 
-	// This is a stupid rule
 	_ "github.com/lib/pq"
 )
 
@@ -35,9 +35,7 @@ func (a *App) Initialize(user, dbname, host, port string) {
 	)
 	var err error
 	a.DB, err = sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckError(err)
 	a.Router = mux.NewRouter()
 
 	a.SeedDatabase()
@@ -52,9 +50,7 @@ func (a *App) Run(addr string) {
 // SeedDatabase initialize database table
 func (a *App) SeedDatabase() {
 	_, err := a.DB.Exec(tableCreationQuery)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckError(err)
 }
 
 func (a *App) initializeRoutes() {
@@ -78,18 +74,18 @@ func (a *App) getPuzzles(w http.ResponseWriter, r *http.Request) {
 
 	puzzles, err := getPuzzles(a.DB, start, count)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, puzzles)
+	utils.RespondWithJSON(w, http.StatusOK, puzzles)
 }
 
 func (a *App) getPuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
 		return
 	}
 
@@ -97,14 +93,14 @@ func (a *App) getPuzzle(w http.ResponseWriter, r *http.Request) {
 	if err := p.getPuzzle(a.DB); err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			respondWithError(w, http.StatusNotFound, "Puzzle not found")
+			utils.RespondWithError(w, http.StatusNotFound, "Puzzle not found")
 		default:
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, p)
+	utils.RespondWithJSON(w, http.StatusOK, p)
 
 }
 
@@ -112,69 +108,57 @@ func (a *App) createPuzzle(w http.ResponseWriter, r *http.Request) {
 	var p puzzle
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&p); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 
 	if err := p.createPuzzle(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, p)
+	utils.RespondWithJSON(w, http.StatusCreated, p)
 }
 
 func (a *App) deletePuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid Puzzle ID")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid Puzzle ID")
 		return
 	}
 
 	p := puzzle{ID: id}
 	if err := p.deletePuzzle(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
 func (a *App) updatePuzzle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid puzzle ID")
 		return
 	}
 
 	var p puzzle
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&p); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
 		return
 	}
 	defer r.Body.Close()
 	p.ID = id
 
 	if err := p.updatePuzzle(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, p)
-}
-
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
+	utils.RespondWithJSON(w, http.StatusOK, p)
 }
